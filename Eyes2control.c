@@ -455,14 +455,14 @@ void interrupt high_priority botao_pressionado_isr1(void)
         INTCONbits.TMR0IF = 0;  // clear the TMR0 flag
         Calibrar=0;
     }
-//    else if(RCIF) {              // If UART Rx Interrupt
-//        if(OERR) // If over run error, then reset the receiver
-//        {
-//            CREN = 0;
-//            CREN = 1;
-//        }
-//        SendByteSerially(RCREG);    // Echo back received char
-//    }
+    else if(RCIF) {              // If UART Rx Interrupt
+        if(OERR) // If over run error, then reset the receiver
+        {
+            CREN = 0;
+            CREN = 1;
+        }
+        SendByteSerially(RCREG);    // Echo back received char
+    }
 
 }
 
@@ -476,17 +476,33 @@ void UART_Initialization(void)
     TRISB2 = 0;                       // TX Pin
     TRISB1 = 1;                       // RX Pin
     SPBRG = ((_XTAL_FREQ/16)/BAUDRATE) - 1;
-    BRGH  = 1;                       // Fast baudrate
-    SYNC  = 0;                        // Asynchronous
-    SPEN  = 1;                        // Enable serial port pins
-    CREN  = 1;                        // Enable reception
-    SREN  = 0;                        // No effect
-    TXIE  = 1;                        // Enable tx interrupts
-    RCIE  = 1;                        // Enable rx interrupts
-    TX9   = 0;                        // 8-bit transmission
-    RX9   = 0;                        // 8-bit reception
-    TXEN  = 0;                        // Reset transmitter
-    TXEN  = 1;                        // Enable the transmitter
+
+    /* CONFIG TRANSMIT STATUS AND CONTROL REGISTER - pg240*/
+    TXSTAbits.TX9   = 0;              // 9-bit transmission
+    TXSTAbits.TXEN  = 0;              // Transmit disabled
+    TXSTAbits.SYNC  = 0;              // Asynchronous Mode
+    TXSTAbits.BRGH  = 1;              // High Baud Rate in Asynchronous Mode
+    
+    /* CONFIG RECEIVE STATUS AND CONTROL REGISTER - pg241*/
+    RCSTAbits.SPEN  = 1;              // Serial port enabled (configures RX/DT and TX/CK pins as serial port pins)
+    RCSTAbits.RX9   = 0;              // Selects 8-bit reception
+    RCSTAbits.SREN  = 0;              // No effect in Asynchronous Mode
+    RCSTAbits.CREN  = 1;              // Enable receiver in Asynchronous Mode
+            
+    /* CONFIG PIR Registers */
+    PIR1bits.RCIF  = 0;               // EUSART receive buffer is empty (Interrupt Flag)
+    PIR1bits.TXIF  = 1;               // EUSART transmit buffer is empty (Interrupt Flag)
+    
+    /* CONFIG PIE Registers */
+    PIE1bits.TXIE  = 1;               // Enable EUSART transmit interrupts
+    PIE1bits.RCIE  = 1;               // Enable EUSART receive interrupts
+
+    /* CONFIG IPR Registers */
+    IPR1bits.TXIP  = 1;               // EUSART transmit interrupt priority bit is HIGH
+    IPR1bits.RCIP  = 1;               // EUSART receive interrupt priority bit is HIGH
+    
+    TXSTAbits.TXEN  = 0;              // Transmitter Enabled
+
 }
 
 void SendByteSerially(unsigned char Byte)  // Writes a character to the serial port
